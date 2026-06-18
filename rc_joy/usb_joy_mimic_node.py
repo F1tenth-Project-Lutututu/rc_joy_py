@@ -9,6 +9,13 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 
+from enum import Enum
+
+class Mode(Enum):
+    STOP = 0
+    MANUAL = 1
+    AUTONOMOUS = 2
+
 class UsbJoyMimicNode(Node):
 
     def __init__(self):
@@ -18,23 +25,32 @@ class UsbJoyMimicNode(Node):
 
         # --- Parameters to map standard gamepads to your custom logic ---
         # Default axes/buttons are configured for a standard Xbox One/360 controller on Linux.
-        self.declare_parameter('axis_throttle', 1)       # Left stick Up/Down
-        self.declare_parameter('axis_steering', 3)       # Right stick Left/Right
-        self.declare_parameter('axis_left_gain', 2)      # LT (Left Trigger)
+        self.declare_parameter('left_stick', 1)       # Left stick Up/Down
+        self.declare_parameter('right_stick', 3)       # Right stick Left/Right
+        self.declare_parameter('left_trigger', 2)      # LT (Left Trigger)
+        self.declare_parameter('right_trigger', 5)      # RT (Right Trigger)
         
-        self.declare_parameter('button_main', 0)         # 'A' button
-        self.declare_parameter('button_trig_left', 4)    # LB (Left Bumper)
-        self.declare_parameter('button_trig_center', 2)  # 'X' button
-        self.declare_parameter('button_trig_right', 5)   # RB (Right Bumper)
+        self.declare_parameter('button_A', 0)         # 'A' button
+        self.declare_parameter('button_B', 1)         # 'B' button
+        self.declare_parameter('button_X', 2)  # 'X' button
+        self.declare_parameter('button_Y', 3)  # 'Y' button
+        self.declare_parameter('left_bumper', 4)    # LB (Left Bumper)
+        self.declare_parameter('right_bumper', 5)   # RB (Right Bumper)
 
-        self.axis_throttle = self.get_parameter('axis_throttle').value
-        self.axis_steering = self.get_parameter('axis_steering').value
-        self.axis_left_gain = self.get_parameter('axis_left_gain').value
+        self.left_stick = self.get_parameter('left_stick').value
+        self.right_stick = self.get_parameter('right_stick').value
+        self.left_trigger = self.get_parameter('left_trigger').value
+        self.right_trigger = self.get_parameter('right_trigger').value
         
-        self.btn_main = self.get_parameter('button_main').value
-        self.btn_trig_l = self.get_parameter('button_trig_left').value
-        self.btn_trig_c = self.get_parameter('button_trig_center').value
-        self.btn_trig_r = self.get_parameter('button_trig_right').value
+        self.btn_A = self.get_parameter('button_A').value
+        self.btn_B = self.get_parameter('button_B').value
+        self.btn_X = self.get_parameter('button_X').value
+        self.btn_Y = self.get_parameter('button_Y').value
+        self.btn_LB = self.get_parameter('left_bumper').value
+        self.btn_RB = self.get_parameter('right_bumper').value
+        
+        self.emergency_stop = False
+        self.mode_switch = Mode.MANUAL
 
         self.latest_joy = None
 
@@ -67,24 +83,30 @@ class UsbJoyMimicNode(Node):
 
         # --- Safely Extract and Remap Axes ---
         # Original expects: axes = [throttle (-1 to 1), steering (-1 to 1), left_gain (0 to 1)]
-        throttle = msg.axes[self.axis_throttle] if len(msg.axes) > self.axis_throttle else 0.0
-        steering = msg.axes[self.axis_steering] if len(msg.axes) > self.axis_steering else 0.0
+        # throttle pedal
+        throttle_pedal = -msg.axes[self.left_trigger] / 2. + 0.5
+        # add break pedal
+        break_pedal = -msg.axes[self.right_trigger] / 2. + 0.5
+        throttle = throttle_pedal - break_pedal
 
-        # Standard analog triggers range from 1.0 (unpressed) to -1.0 (fully pressed).
-        # The original code mapped left_gain to [0.0 to 1.0]. We remap this mathematically:
-        raw_gain = msg.axes[self.axis_left_gain] if len(msg.axes) > self.axis_left_gain else 1.0
-        left_gain = (1.0 - raw_gain) / 2.0 
+        steering = msg.axes[self.right_stick]
 
-        out_msg.axes = [throttle, steering, left_gain]
+        out_msg.axes = [throttle, steering, 1.]
 
-        # --- Safely Extract and Remap Buttons ---
-        # Original expects: buttons = [main_button, trig_left, trig_center, trig_right]
-        b_main = msg.buttons[self.btn_main] if len(msg.buttons) > self.btn_main else 0
-        b_tl = msg.buttons[self.btn_trig_l] if len(msg.buttons) > self.btn_trig_l else 0
-        b_tc = msg.buttons[self.btn_trig_c] if len(msg.buttons) > self.btn_trig_c else 0
-        b_tr = msg.buttons[self.btn_trig_r] if len(msg.buttons) > self.btn_trig_r else 0
+        if msg.buttons[self.btn_A]:
+            self.emergency_stop = not self.emergency_stop
+        
+        if msg.buttons[self.btn_B]:
+            self.mode_switch = Mode.MANUAL
 
-        out_msg.buttons = [b_main, b_tl, b_tc, b_tr]
+        if msg.buttons[self.btn_X]:
+            self.mode_switch = Mode.BREAK
+
+        if msg.buttons[self.btn_Y]:
+            self.mode_switch = Mode.AUTONOMOUS
+
+        out_msg.buttons = [self.emergency_stop, self.mode_switch == Mode.MANUAL,
+                           self.mode_switch == Mode.BREAK, self.mode_switch == Mode.AUTONOMOUS]
 
         self.publisher.publish(out_msg)
 
