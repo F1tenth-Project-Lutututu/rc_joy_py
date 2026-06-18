@@ -6,8 +6,10 @@ ament_auto_find_build_dependencies()
 
 ament_python_install_package(${PROJECT_NAME})
 
-set(PY_EXECUTEABLE "rc_joy_node.py")
-install(PROGRAMS ${PROJECT_NAME}/${PY_EXECUTEABLE} DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS
+	${PROJECT_NAME}/rc_joy_node.py
+	${PROJECT_NAME}/usb_joy_mimic_node.py
+	DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
