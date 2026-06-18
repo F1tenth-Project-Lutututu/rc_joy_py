@@ -89,7 +89,7 @@ class UsbJoyMimicNode(Node):
         break_pedal = -msg.axes[self.right_trigger] / 2. + 0.5
         throttle = throttle_pedal - break_pedal
 
-        steering = msg.axes[self.right_stick]
+        steering = -msg.axes[self.right_stick]
 
         out_msg.axes = [throttle, steering, 1.]
 
