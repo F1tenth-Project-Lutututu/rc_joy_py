@@ -1,3 +1,4 @@
 /**:
   ros__parameters:
-    port: "/dev/ttyACM1"
+    port: "/dev/rc_joy"
+    #port: "/dev/ttyACM1"
