@@ -100,13 +100,15 @@ class UsbJoyMimicNode(Node):
             self.mode_switch = Mode.MANUAL
 
         if msg.buttons[self.btn_X]:
-            self.mode_switch = Mode.BREAK
+            self.mode_switch = Mode.STOP
 
         if msg.buttons[self.btn_Y]:
             self.mode_switch = Mode.AUTONOMOUS
 
-        out_msg.buttons = [self.emergency_stop, self.mode_switch == Mode.MANUAL,
-                           self.mode_switch == Mode.BREAK, self.mode_switch == Mode.AUTONOMOUS]
+        out_msg.buttons = [self.emergency_stop,
+                           self.mode_switch == Mode.STOP,
+                           self.mode_switch == Mode.MANUAL,
+                           self.mode_switch == Mode.AUTONOMOUS]
 
         self.publisher.publish(out_msg)
 
