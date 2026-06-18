@@ -95,7 +95,7 @@ class UsbJoyMimicNode(Node):
 
         if msg.buttons[self.btn_A]:
             self.emergency_stop = not self.emergency_stop
-            self.mode_switch = Mode.MANUAL
+            self.mode_switch = Mode.STOP
         
         if msg.buttons[self.btn_B]:
             self.mode_switch = Mode.MANUAL
